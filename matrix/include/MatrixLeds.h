@@ -33,6 +33,7 @@ public:
     ::ndk::ScopedAStatus getStreamState(StreamState* _aidl_return) override;
     ::ndk::ScopedAStatus setSolidBrightness(int32_t brightness) override;
     ::ndk::ScopedAStatus setSingleBrightness(int32_t index, int32_t brightness) override;
+    ::ndk::ScopedAStatus setFrame(const std::vector<int32_t>& brightness) override;
     ::ndk::ScopedAStatus setImax(int32_t imax) override;
     ::ndk::ScopedAStatus setAlwaysOn(bool enabled) override;
     ::ndk::ScopedAStatus setCallback(

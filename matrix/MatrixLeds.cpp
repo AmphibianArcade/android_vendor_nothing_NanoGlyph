@@ -1,4 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
+#include <fcntl.h>
+#include <unistd.h>
+
 #include <MatrixLeds.h>
 #include <DeviceConfigs.h> 
 
@@ -254,6 +257,62 @@ bool MatrixLeds::init() {
     return ::ndk::ScopedAStatus::ok();
 }
 
+::ndk::ScopedAStatus MatrixLeds::setFrame(const std::vector<int32_t>& brightness) {
+    const auto& cfg = mDevice.config();
+    {
+        std::lock_guard<std::mutex> lock(mMutex);
+
+        if (!mDeviceAvailable) {
+            return ::ndk::ScopedAStatus::fromServiceSpecificError(kErrNotAvailable);
+        }
+
+        if (static_cast<int32_t>(brightness.size()) != static_cast<int32_t>(cfg.pixelCount)) {
+            LOG(ERROR) << cfg.name << ": setFrame: length " << brightness.size()
+                    << " != expected " << cfg.pixelCount;
+            return ::ndk::ScopedAStatus::fromServiceSpecificError(kErrInvalidArgument);
+        }
+
+        if (mState == StreamState::STREAMING) {
+            mDevice.stopStream();
+            setStateLocked(StreamState::STOPPED);
+            mMonitorRunning = false;
+            mDevice.interruptWait();
+        }
+    }
+
+    if (mMonitorThread.joinable()) {
+        mMonitorThread.join();
+    }
+
+    std::string payload;
+    payload.reserve(brightness.size() * 4);
+    for (size_t i = 0; i < brightness.size(); ++i) {
+        if (brightness[i] < 0 || brightness[i] > 255) {
+            LOG(ERROR) << cfg.name << ": setFrame: value " << brightness[i]
+                       << " at index " << i << " out of range 0-255";
+            return ::ndk::ScopedAStatus::fromServiceSpecificError(kErrInvalidArgument);
+        }
+        if (i > 0) payload += ' ';
+        payload += std::to_string(brightness[i]);
+    }
+
+    const char* kPath = kFrameBrightnessPath.c_str();
+    int fd = ::open(kPath, O_WRONLY);
+    if (fd < 0) {
+        LOG(ERROR) << cfg.name << ": failed to open " << kPath << ": "
+                   << strerror(errno);
+        return ::ndk::ScopedAStatus::fromServiceSpecificError(kErrIoError);
+    }
+    ssize_t n = ::write(fd, payload.data(), payload.size());
+    ::close(fd);
+    if (n < 0 || static_cast<size_t>(n) != payload.size()) {
+        LOG(ERROR) << cfg.name << ": write to frame_brightness failed: "
+                   << strerror(errno);
+        return ::ndk::ScopedAStatus::fromServiceSpecificError(kErrIoError);
+    }
+
+    return ::ndk::ScopedAStatus::ok();
+}
 
 ::ndk::ScopedAStatus MatrixLeds::setImax(int32_t imax) {
     LOG(WARNING) << "setImax(" << imax << ") not yet implemented for this device";

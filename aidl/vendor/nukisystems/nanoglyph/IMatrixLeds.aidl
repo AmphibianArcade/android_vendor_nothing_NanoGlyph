@@ -92,6 +92,23 @@ interface IMatrixLeds {
      */
     void setSingleBrightness(int index, int brightness);
 
+    /**
+     * Immediately displays a single frame, overriding any active stream or
+     * previously loaded pattern. Each value is a raw device-scale brightness
+     * (0-4095, per this panel's native PWM range) applied directly per pixel
+     * -- no additional global brightness scaling is applied on top.
+     *
+     * The array length must equal getPixelCount(). Continues displaying
+     * this frame until stopStream(), setFrame(), loadPattern()+startStream(),
+     * or setSolidBrightness() is next called.
+     *
+     * Throws a service-specific exception with code:
+     *   NOT_AVAILABLE if isAvailable() is false
+     *   INVALID_ARGUMENT if brightness.length != getPixelCount() or any
+     *                     value is outside 0-4095
+     *   IO_ERROR if writing to the device failed
+     */
+    void setFrame(in int[] brightness);
 
     /**
      * Sets the global current/imax configuration for the panel driver.
