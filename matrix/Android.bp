@@ -1,0 +1,46 @@
+// SPDX-License-Identifier: Apache-2.0
+
+cc_binary {
+    name: "vendor.nukisystems.nanoglyph.matrix-service",
+    owner: "nukisystems",
+    vendor: true,
+    relative_install_path: "hw",
+    init_rc: ["vendor.nukisystems.nanoglyph.matrix-service.rc"],
+    vintf_fragments: ["vintf/vendor.nukisystems.nanoglyph-matrix.xml"],
+
+    srcs: [
+        "service/main.cpp",
+        "MatrixLeds.cpp",
+        "LedStripsDevice.cpp",
+    ],
+
+    local_include_dirs: ["include"],
+
+    shared_libs: [
+        "libbase",
+        "liblog",
+        "libbinder_ndk",
+        "vendor.nukisystems.nanoglyph-V1-ndk",
+    ],
+
+    cflags: [
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+    ] + select(soong_config_variable("nanoglyph", "led_count"), {
+        any @ flag_val: ["-DMATRIX_LEDS_COUNT=" + flag_val ],
+        default: [],
+    })
+}
+
+cc_binary {
+    name: "matrixleds_test",
+    vendor: true,
+    srcs: ["test/matrix_test.cpp"],
+    shared_libs: [
+        "libbase",
+        "liblog",
+        "libbinder_ndk",
+        "vendor.nukisystems.nanoglyph-V1-ndk",
+    ],
+}

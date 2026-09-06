@@ -1,0 +1,9 @@
+service vendor.matrixleds /vendor/bin/hw/vendor.nukisystems.nanoglyph.matrix-service
+    class hal
+    user system
+    group system
+    capabilities SYS_NICE
+
+on boot 
+    chown system system /dev/matrix-leds
+    chmod 660 /dev/matrix-leds

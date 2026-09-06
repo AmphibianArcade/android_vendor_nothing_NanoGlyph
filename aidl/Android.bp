@@ -1,0 +1,21 @@
+aidl_interface {
+    name: "vendor.nukisystems.nanoglyph",
+    vendor: true,
+    srcs: ["vendor/nukisystems/nanoglyph/*.aidl"],
+    stability: "vintf",
+    backend: {
+        java: {
+            enabled: true,
+            sdk_version: "system_current",
+        },
+        cpp: {
+            enabled: false,
+        },
+    },
+    versions_with_info: [
+        {
+            version: "1",
+            imports: [],
+        },
+    ],
+}
