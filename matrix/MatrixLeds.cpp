@@ -3,6 +3,9 @@
 #include <DeviceConfigs.h> 
 
 #include <android-base/logging.h>
+#include <android-base/file.h>
+
+#include "SysfsDefs.h"
 
 namespace aidl::vendor::nukisystems::nanoglyph {
 
@@ -183,51 +186,34 @@ bool MatrixLeds::init() {
 }
 
 ::ndk::ScopedAStatus MatrixLeds::setSolidBrightness(int32_t brightness) {
-    std::lock_guard<std::mutex> lock(mMutex);
+    {
+        std::lock_guard<std::mutex> lock(mMutex);
 
-    if (!mDeviceAvailable) {
-        return ::ndk::ScopedAStatus::fromServiceSpecificError(kErrNotAvailable);
-    }
-    if (brightness < 0 || brightness > 255) {
-        return ::ndk::ScopedAStatus::fromServiceSpecificError(kErrInvalidArgument);
-    }
-    if (mState == StreamState::STREAMING) {
-        return ::ndk::ScopedAStatus::fromServiceSpecificError(kErrBusy);
+        if (!mDeviceAvailable) {
+            return ::ndk::ScopedAStatus::fromServiceSpecificError(kErrNotAvailable);
+        }
+        if (brightness < 0 || brightness > 255) {
+            return ::ndk::ScopedAStatus::fromServiceSpecificError(kErrInvalidArgument);
+        }
+
+        if (mState == StreamState::STREAMING) {
+            mDevice.stopStream();
+            setStateLocked(StreamState::STOPPED);
+            mMonitorRunning = false;
+            mDevice.interruptWait();
+        }
+    } 
+
+    if (mMonitorThread.joinable()) {
+        mMonitorThread.join();  
     }
 
     const auto& cfg = mDevice.config();
-
-    brightness = std::clamp(brightness, 0, 255);
-
-    std::vector<uint16_t> frame(
-            cfg.pixelCount,
-            4095);
-
-    mDevice.resetSlots();
-
-    if (!mDevice.writeSlot(
-            0,
-            reinterpret_cast<const uint8_t*>(frame.data()),
-            cfg.pixelCount,
-            static_cast<uint8_t>(brightness))) {
-        return ndk::ScopedAStatus::fromExceptionCode(
-                EX_ILLEGAL_STATE);
+    std::string str = std::to_string(brightness);
+    if (!::android::base::WriteStringToFile(str, cfg.allBrightnessPath)) {
+        return ndk::ScopedAStatus::fromServiceSpecificError(kErrIoError);
     }
 
-    if (!mDevice.startStream(
-            static_cast<int>(cfg.pixelCount))) {
-        return ndk::ScopedAStatus::fromExceptionCode(
-                EX_ILLEGAL_STATE);
-    }
-
-    mPatternLoaded = true;
-    mLoadedFrameCount = 1;
-    mLoadedPixelsPerFrame = cfg.pixelCount;
-    setStateLocked(StreamState::STREAMING);
-    if (!mMonitorRunning.exchange(true)) {
-        if (mMonitorThread.joinable()) mMonitorThread.join();
-        mMonitorThread = std::thread(&MatrixLeds::playbackMonitorLoop, this);
-    }
     return ::ndk::ScopedAStatus::ok();
 }
 

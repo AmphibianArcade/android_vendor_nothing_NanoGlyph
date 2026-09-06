@@ -8,5 +8,9 @@ service vendor.matrixleds /vendor/bin/hw/vendor.nukisystems.nanoglyph.matrix-ser
 on boot 
     chown system system /dev/matrix-leds
     chmod 660 /dev/matrix-leds
+    chown system system /sys/class/leds/matrix-leds/all_white_brightness
+    chmod 660 /sys/class/leds/matrix-leds/all_white_brightness
+    chown system system /sys/class/leds/matrix-leds/all_brightness
+    chmod 660 /sys/class/leds/matrix-leds/all_brightness
     chown system system /sys/class/leds/matrix-leds/operating_mode
     chmod 660 /sys/class/leds/matrix-leds/operating_mode

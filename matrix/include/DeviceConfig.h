@@ -5,6 +5,7 @@
 #include <string>
 
 #include "LedMmap.h"
+#include "SysfsDefs.h"
 
 namespace vendor::nukisystems::nanoglyph::impl {
 
@@ -40,6 +41,7 @@ struct DeviceConfig {
     uint32_t ioctlStopMode = LED_STRIPS_STOP_MODE;
     uint32_t ioctlAlwaysOn = LED_STRIPS_ALWAYS_ON;
     uint32_t ioctlFreqSet = LED_STRIPS_FREQ_SET;
+    const char* allBrightnessPath = nullptr;
 };
 
 }  // namespace vendor::nukisystems::nanoglyph::impl

@@ -3,6 +3,7 @@
 
 #include "DeviceConfig.h"
 #include "LedStripsDevice.h"
+#include "SysfsDefs.h"
 
 inline vendor::nukisystems::nanoglyph::impl::DeviceConfig makeConfig() {
     using vendor::nukisystems::nanoglyph::impl::DeviceConfig;
@@ -28,6 +29,8 @@ inline vendor::nukisystems::nanoglyph::impl::DeviceConfig makeConfig() {
 
     cfg.brightnessFormat = BrightnessFormat::U8;
 
+    cfg.allBrightnessPath = kAllBrightnessPathAwinic.c_str();
+
 #elif MATRIX_LEDS_COUNT == MATRIXLEDS_METROID_PIXEL_COUNT
 
     using vendor::nukisystems::nanoglyph::impl::LedMmapBufSPI;
@@ -44,6 +47,8 @@ inline vendor::nukisystems::nanoglyph::impl::DeviceConfig makeConfig() {
     cfg.ringTotalSize = cfg.slotSize * cfg.numSlots;
 
     cfg.brightnessFormat = BrightnessFormat::U16;
+
+    cfg.allBrightnessPath = kAllBrightnessPathSPI.c_str();
 
 #else
 
