@@ -3,7 +3,7 @@ package vendor.nukisystems.nanoglyph;
 
 import vendor.nukisystems.nanoglyph.StreamState;
 
-@VintfStability
+// @VintfStability
 oneway interface IMatrixLedsCallback {
     /** Called whenever playback state changes. */
     void onStreamStateChanged(in StreamState newState);

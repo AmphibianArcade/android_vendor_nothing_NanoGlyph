@@ -2,6 +2,7 @@ service vendor.matrixleds /vendor/bin/hw/vendor.nukisystems.nanoglyph.matrix-ser
     class hal
     user system
     group system
+    interface aidl vendor.nukisystems.nanoglyph.IMatrixLeds/default
     capabilities SYS_NICE
 
 on boot 

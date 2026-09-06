@@ -1,7 +1,7 @@
 // MatrixPattern.aidl
 package vendor.nukisystems.nanoglyph;
 
-@VintfStability
+// @VintfStability
 parcelable MatrixPattern {
     /** Number of pixels per frame. Must equal IMatrixLeds.getPixelCount(). */
     int pixelsPerFrame;

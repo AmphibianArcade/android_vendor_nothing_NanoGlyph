@@ -12,7 +12,7 @@ package vendor.nukisystems.nanoglyph;
  * exposing them would couple app code to a kernel driver ABI that can
  * change independently of this AIDL interface's own versioning.
  */
-@VintfStability
+// @VintfStability
 parcelable DeviceInfo {
     /** Stable identifier matching this instance's registered name, e.g. "aw20144". */
     String name;

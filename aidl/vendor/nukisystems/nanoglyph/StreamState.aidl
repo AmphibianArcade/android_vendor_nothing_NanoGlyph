@@ -1,7 +1,7 @@
 // StreamState.aidl
 package vendor.nukisystems.nanoglyph;
 
-@VintfStability
+// @VintfStability
 @Backing(type="int")
 enum StreamState {
     STOPPED = 0,

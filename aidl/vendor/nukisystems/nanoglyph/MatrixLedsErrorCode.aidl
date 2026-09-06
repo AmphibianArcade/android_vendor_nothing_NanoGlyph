@@ -4,7 +4,7 @@ package vendor.nukisystems.nanoglyph;
 /**
  * Error codes returned via service-specific exceptions
  */
-@VintfStability
+// @VintfStability
 @Backing(type="int")
 enum MatrixLedsErrorCode {
     NOT_AVAILABLE = 1,

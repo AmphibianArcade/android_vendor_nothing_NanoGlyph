@@ -16,7 +16,7 @@ import vendor.nukisystems.nanoglyph.StreamState;
  *
  */
 
-@VintfStability
+// @VintfStability
 interface IMatrixLeds {
     /**
      * Returns true if the matrix LED chip was detected and initialized
