@@ -42,6 +42,8 @@ struct DeviceConfig {
     uint32_t ioctlAlwaysOn = LED_STRIPS_ALWAYS_ON;
     uint32_t ioctlFreqSet = LED_STRIPS_FREQ_SET;
     const char* allBrightnessPath = nullptr;
+
+    const char* singleBrightnessPath = kSingleBrightnessPath.c_str();
 };
 
 }  // namespace vendor::nukisystems::nanoglyph::impl

@@ -217,6 +217,44 @@ bool MatrixLeds::init() {
     return ::ndk::ScopedAStatus::ok();
 }
 
+::ndk::ScopedAStatus MatrixLeds::setSingleBrightness(int32_t index, int32_t brightness) {
+    const auto& cfg = mDevice.config();
+    {
+        std::lock_guard<std::mutex> lock(mMutex);
+
+        if (!mDeviceAvailable) {
+            return ::ndk::ScopedAStatus::fromServiceSpecificError(kErrNotAvailable);
+        }
+        if (brightness < 0 || brightness > 255) {
+            return ::ndk::ScopedAStatus::fromServiceSpecificError(kErrInvalidArgument);
+        }
+
+        if (index < 0 || static_cast<size_t>(index) >= cfg.pixelCount) {
+            return ::ndk::ScopedAStatus::fromServiceSpecificError(kErrInvalidArgument);
+        }
+
+        if (mState == StreamState::STREAMING) {
+            mDevice.stopStream();
+            setStateLocked(StreamState::STOPPED);
+            mMonitorRunning = false;
+            mDevice.interruptWait();
+        }
+    } 
+
+    if (mMonitorThread.joinable()) {
+        mMonitorThread.join();  
+    }
+
+    std::string str_brightness = std::to_string(brightness);
+    std::string str_index = std::to_string(index);
+    if (!::android::base::WriteStringToFile(str_index + " " + str_brightness, cfg.singleBrightnessPath)) {
+        return ndk::ScopedAStatus::fromServiceSpecificError(kErrIoError);
+    }
+
+    return ::ndk::ScopedAStatus::ok();
+}
+
+
 ::ndk::ScopedAStatus MatrixLeds::setImax(int32_t imax) {
     LOG(WARNING) << "setImax(" << imax << ") not yet implemented for this device";
     return ::ndk::ScopedAStatus::fromServiceSpecificError(kErrNotAvailable);

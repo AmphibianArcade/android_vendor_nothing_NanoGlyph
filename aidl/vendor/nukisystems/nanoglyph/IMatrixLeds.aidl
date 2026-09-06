@@ -83,6 +83,17 @@ interface IMatrixLeds {
     void setSolidBrightness(int brightness);
 
     /**
+     * Sets specific pixel to a single brightness value and displays
+     * it immediately, independent of any loaded pattern or active stream.
+     * Intended for simple status indication, not animation.
+     *
+     * @param index 0 start LED index within range: (index <= (getPixelCount() -1))
+     * @param brightness 0-255.
+     */
+    void setSingleBrightness(int index, int brightness);
+
+
+    /**
      * Sets the global current/imax configuration for the panel driver.
      * Range and meaning are device-specific; see device documentation.
      */
