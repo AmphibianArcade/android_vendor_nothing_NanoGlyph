@@ -8,3 +8,5 @@ service vendor.matrixleds /vendor/bin/hw/vendor.nukisystems.nanoglyph.matrix-ser
 on boot 
     chown system system /dev/matrix-leds
     chmod 660 /dev/matrix-leds
+    chown system system /sys/class/leds/matrix-leds/operating_mode
+    chmod 660 /sys/class/leds/matrix-leds/operating_mode

@@ -8,6 +8,8 @@
 #include <cerrno>
 #include <cstring>
 
+#include <SysfsDefs.h>
+
 #include <android-base/logging.h>
 
 namespace vendor::nukisystems::nanoglyph::impl {
@@ -20,6 +22,22 @@ namespace {
 }
 LedStripsDevice::~LedStripsDevice() {
     close();
+}
+
+bool setOperatingMode(bool state) {
+    int fd = ::open(kOperatingModePath.c_str(), O_WRONLY);
+    if (fd < 0) {
+        LOG(ERROR) << "Failed to open " << kOperatingModePath << ": " << strerror(errno);
+        return false;
+    }
+    const char value = state ? '1' : '0'; 
+    ssize_t n = ::write(fd, &value, 1);  
+    ::close(fd);
+    if (n != 1) {
+        LOG(ERROR) << "Failed to write operating_mode: " << strerror(errno);
+        return false;
+    }
+    return true;
 }
 
 bool LedStripsDevice::open() {
@@ -57,6 +75,11 @@ bool LedStripsDevice::open() {
     LOG(INFO) << mConfig.name << ": opened fd=" << mFd
               << " (" << mConfig.pixelCount << " px, "
               << mConfig.bytesPerPixel << " bytes/px), ring mapped at " << mRing;
+
+    if (mConfig.deviceType == DeviceType::AW20144) {
+        return setOperatingMode(true);
+    }
+        
     return true;
 }
 
@@ -68,6 +91,10 @@ void LedStripsDevice::close() {
     if (mFd >= 0) {
         ::close(mFd);
         mFd = -1;
+    }
+
+    if (mConfig.deviceType == DeviceType::AW20144) {
+        setOperatingMode(false);
     }
 }
 
