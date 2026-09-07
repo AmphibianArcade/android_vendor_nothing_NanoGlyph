@@ -1,0 +1,24 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+
+type hal_matrix_leds, domain;
+type hal_matrix_leds_exec, exec_type, vendor_file_type, file_type;
+type hal_matrix_leds_service, service_manager_type;
+
+init_daemon_domain(hal_matrix_leds)
+
+binder_use(hal_matrix_leds)
+binder_call(hal_matrix_leds, servicemanager)
+add_service(hal_matrix_leds, hal_matrix_leds_service)
+
+allow hal_matrix_leds servicemanager:binder transfer;
+
+allow hal_matrix_leds glyph_matrix_device:chr_file rw_file_perms;
+
+allow hal_matrix_leds vendor_sysfs_graphics:file rw_file_perms;
+allow hal_matrix_leds vendor_sysfs_graphics:dir r_dir_perms;
+allow hal_matrix_leds vendor_sysfs_leds:file rw_file_perms;
+allow hal_matrix_leds vendor_sysfs_leds:dir r_dir_perms;
+
+# Logging
+allow hal_matrix_leds kmsg_device:chr_file w_file_perms;

@@ -1,0 +1,5 @@
+# Glyph Matrix
+/dev/matrix-leds    u:object_r:glyph_matrix_device:s0
+
+# NanoGlyph
+/vendor/bin/hw/vendor\.nukisystems\.nanoglyph\.matrix-service   u:object_r:hal_matrix_leds_exec:s0
