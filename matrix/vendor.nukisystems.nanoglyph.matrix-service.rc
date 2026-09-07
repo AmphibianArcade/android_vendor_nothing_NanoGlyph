@@ -4,6 +4,7 @@ service vendor.matrixleds /vendor/bin/hw/vendor.nukisystems.nanoglyph.matrix-ser
     group system
     interface aidl vendor.nukisystems.nanoglyph.IMatrixLeds/default
     capabilities SYS_NICE
+    disabled
 
 on boot 
     chown system system /dev/matrix-leds
@@ -18,3 +19,4 @@ on boot
     chmod 660 /sys/class/leds/matrix-leds/all_brightness
     chown system system /sys/class/leds/matrix-leds/operating_mode
     chmod 660 /sys/class/leds/matrix-leds/operating_mode
+    start vendor.matrixleds
