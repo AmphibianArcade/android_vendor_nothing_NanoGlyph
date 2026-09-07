@@ -25,6 +25,11 @@ constexpr int32_t kErrNoPatternLoaded = 3; // MatrixLedsErrorCode.NO_PATTERN_LOA
 constexpr int32_t kErrBusy            = 4; // MatrixLedsErrorCode.BUSY
 constexpr int32_t kErrIoError         = 5; // MatrixLedsErrorCode.IO_ERROR
 
+constexpr int kDeviceMaxScale = 4095; 
+uint16_t scaleTo12Bit(uint8_t value8) {
+    return static_cast<uint16_t>((static_cast<int>(value8) * kDeviceMaxScale + 127) / 255);
+}
+
 }  // namespace
 
 MatrixLeds::MatrixLeds() : mDevice(makeConfig()) {}
@@ -81,55 +86,57 @@ bool MatrixLeds::init() {
 
 ::ndk::ScopedAStatus MatrixLeds::loadPattern(const MatrixPattern& pattern) {
     std::lock_guard<std::mutex> lock(mMutex);
-
     const auto& cfg = mDevice.config();
 
     if (!mDeviceAvailable) {
         return ::ndk::ScopedAStatus::fromServiceSpecificError(kErrNotAvailable);
     }
-    if (static_cast<size_t>(pattern.pixelsPerFrame) != cfg.pixelCount) {
+    if (pattern.pixelsPerFrame != static_cast<int32_t>(cfg.pixelCount)) {
         LOG(ERROR) << cfg.name << ": loadPattern: pixelsPerFrame "
                    << pattern.pixelsPerFrame << " != expected " << cfg.pixelCount;
         return ::ndk::ScopedAStatus::fromServiceSpecificError(kErrInvalidArgument);
     }
     if (pattern.frameCount <= 0 || pattern.frameCount > mDevice.slotCount()) {
-
         LOG(ERROR) << cfg.name << ": loadPattern: frameCount " << pattern.frameCount
                    << " out of range (max " << mDevice.slotCount() << ")";
         return ::ndk::ScopedAStatus::fromServiceSpecificError(kErrInvalidArgument);
     }
-    const size_t expectedBytes = static_cast<size_t>(pattern.frameCount) *
-                                  pattern.pixelsPerFrame * cfg.bytesPerPixel;
+
+    // frameData is always 1 byte/pixel (0-255) per the AIDL contract,
+    // regardless of this device's native width.
+    const size_t expectedBytes =
+            static_cast<size_t>(pattern.frameCount) * pattern.pixelsPerFrame;
     if (pattern.frameData.size() != expectedBytes) {
-        LOG(ERROR) << "loadPattern: frameData size " << pattern.frameData.size()
-                   << " != expected " << expectedBytes;
+        LOG(ERROR) << cfg.name << ": loadPattern: frameData size "
+                   << pattern.frameData.size() << " != expected " << expectedBytes;
         return ::ndk::ScopedAStatus::fromServiceSpecificError(kErrInvalidArgument);
-    }
-    if (mState == StreamState::STREAMING) {
-        return ::ndk::ScopedAStatus::fromServiceSpecificError(kErrBusy);
     }
 
     mDevice.resetSlots();
-    const uint8_t brightness = static_cast<uint8_t>(
-            std::clamp(pattern.brightness, 0, 255));
 
-    const size_t frameStrideBytes =
-            static_cast<size_t>(pattern.pixelsPerFrame) * cfg.bytesPerPixel;
+    const uint8_t brightness8 =
+            static_cast<uint8_t>(std::clamp(pattern.brightness, 0, 255));
 
-    for (int i = 0; i < pattern.frameCount; ++i) {
-        const uint8_t* frameStart =
-                reinterpret_cast<const uint8_t*>(pattern.frameData.data()) +
-                (static_cast<size_t>(i) * frameStrideBytes);
-        if (!mDevice.writeSlot(i, frameStart, pattern.pixelsPerFrame, brightness)) {
-            LOG(ERROR) << cfg.name << ": loadPattern: writeSlot failed at frame " << i;
+    mLoadedFrames.clear();
+    mLoadedFrames.reserve(pattern.frameCount);
+    for (int f = 0; f < pattern.frameCount; ++f) {
+        const uint8_t* src = reinterpret_cast<const uint8_t*>(pattern.frameData.data()) +
+                            static_cast<size_t>(f) * pattern.pixelsPerFrame;
+        std::vector<uint16_t> scaledFrame(pattern.pixelsPerFrame);
+        for (int p = 0; p < pattern.pixelsPerFrame; ++p) {
+            scaledFrame[p] = scaleTo12Bit(src[p]);
+        }
+        if (!mDevice.writeSlot(f, reinterpret_cast<const uint8_t*>(scaledFrame.data()),
+                                scaledFrame.size(), brightness8)) {
             return ::ndk::ScopedAStatus::fromServiceSpecificError(kErrIoError);
         }
+        mLoadedFrames.push_back(std::move(scaledFrame)); 
     }
+    mLoadedBrightness8 = brightness8;
 
     mPatternLoaded = true;
     mLoadedFrameCount = pattern.frameCount;
     mLoadedPixelsPerFrame = pattern.pixelsPerFrame;
-
     LOG(INFO) << cfg.name << ": loadPattern: loaded " << pattern.frameCount
               << " frames of " << pattern.pixelsPerFrame << " pixels";
     return ::ndk::ScopedAStatus::ok();

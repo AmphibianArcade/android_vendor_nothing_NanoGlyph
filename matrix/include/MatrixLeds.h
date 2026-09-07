@@ -47,7 +47,9 @@ private:
 
     LedStripsDevice mDevice;
 
-    std::mutex mMutex;                 
+    std::mutex mMutex;
+    std::vector<std::vector<uint16_t>> mLoadedFrames;
+    uint8_t mLoadedBrightness8 = 0;                 
     bool mDeviceAvailable = false;
     bool mPatternLoaded = false;
     int mLoadedFrameCount = 0;
