@@ -368,7 +368,6 @@ void MatrixLeds::playbackMonitorLoop() {
         if (!mDevice.waitFrameEvent(&eventCode)) {
             std::lock_guard<std::mutex> lock(mMutex);
             if (mMonitorRunning) {
-                LOG(ERROR) << "playbackMonitorLoop: device error, marking ERROR";
                 mState = StreamState::ERROR;
                 if (mCallback) mCallback->onDeviceError(mDevice.lastErrno());
             }
@@ -376,7 +375,19 @@ void MatrixLeds::playbackMonitorLoop() {
             break;
         }
 
-        LOG(INFO) << "playbackMonitorLoop: frame event code=" << eventCode;
+        std::lock_guard<std::mutex> lock(mMutex);
+        if (mState != StreamState::STREAMING || mLoadedFrames.empty()) {
+            mMonitorRunning = false;
+            break;
+        }
+
+        mDevice.resetSlots();
+        for (size_t i = 0; i < mLoadedFrames.size(); ++i) {
+            mDevice.writeSlot(static_cast<int>(i),
+                               reinterpret_cast<const uint8_t*>(mLoadedFrames[i].data()),
+                               mLoadedFrames[i].size(), mLoadedBrightness8);
+        }
+        mDevice.startStream(mDevice.config().pixelCount);
     }
 }
 
