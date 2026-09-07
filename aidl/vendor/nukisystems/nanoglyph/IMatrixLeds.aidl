@@ -105,7 +105,7 @@ interface IMatrixLeds {
      * Throws a service-specific exception with code:
      *   NOT_AVAILABLE if isAvailable() is false
      *   INVALID_ARGUMENT if brightness.length != getPixelCount() or any
-     *                     value is outside 0-4095
+     *                     value is outside 0-255
      *   IO_ERROR if writing to the device failed
      */
     void setFrame(in int[] brightness);
