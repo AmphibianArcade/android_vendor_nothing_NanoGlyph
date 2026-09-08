@@ -5,6 +5,7 @@ service vendor.matrixleds /vendor/bin/hw/vendor.nukisystems.nanoglyph.matrix-ser
     interface aidl vendor.nukisystems.nanoglyph.IMatrixLeds/default
     capabilities SYS_NICE
     disabled
+    oneshot
 
 on boot 
     chown system system /dev/matrix-leds

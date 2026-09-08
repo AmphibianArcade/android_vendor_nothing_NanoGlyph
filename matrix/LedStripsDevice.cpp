@@ -15,9 +15,8 @@
 namespace vendor::nukisystems::nanoglyph::impl {
 
 namespace {
-    LedMmapBuf* slotAt(void* ring, int index) {
-    return reinterpret_cast<LedMmapBuf*>(
-            static_cast<uint8_t*>(ring) + (static_cast<size_t>(index) * sizeof(LedMmapBuf)));
+    uint8_t* slotBase(void* ring, int index, size_t slotSize) {
+        return static_cast<uint8_t*>(ring) + (static_cast<size_t>(index) * slotSize);
     }
 }
 LedStripsDevice::~LedStripsDevice() {
@@ -67,9 +66,7 @@ bool LedStripsDevice::open() {
     mRing = mapped;
 
     for (int i = 0; i < mConfig.numSlots; ++i) {
-        LedMmapBuf* slot = slotAt(mRing, i);
-        slot->user_next = slotAt(mRing, (i + 1) % mConfig.numSlots);
-        slot->status = static_cast<uint8_t>(MmapBufStatus::INVALID);
+        linkAndInvalidateSlot(i);
     }
 
     LOG(INFO) << mConfig.name << ": opened fd=" << mFd
@@ -85,7 +82,7 @@ bool LedStripsDevice::open() {
 
 void LedStripsDevice::close() {
     if (mRing != nullptr) {
-        ::munmap(mRing, sizeof(LedMmapBuf) * mConfig.numSlots);
+        ::munmap(mRing, mConfig.ringTotalSize);
         mRing = nullptr;
     }
     if (mFd >= 0) {
@@ -149,7 +146,7 @@ bool LedStripsDevice::writeSlotAw20144(int slotIndex,
         return false;
     }
 
-    LedMmapBuf* slot = slotAt(mRing, slotIndex);
+    auto* slot = reinterpret_cast<LedMmapBufAwinic*>(slotBase(mRing, slotIndex, mConfig.slotSize));
 
     const size_t dataBytes = pixelCount * sizeof(uint16_t);
 
@@ -172,7 +169,7 @@ bool LedStripsDevice::writeSlotSpiMatrix(int slotIndex,
         return false;
     }
 
-    LedMmapBuf* slot = slotAt(mRing, slotIndex);
+    auto* slot = reinterpret_cast<LedMmapBufSPI*>(slotBase(mRing, slotIndex, mConfig.slotSize));
 
     const size_t dataBytes = pixelCount * sizeof(uint16_t);
 
@@ -185,6 +182,30 @@ bool LedStripsDevice::writeSlotSpiMatrix(int slotIndex,
 
     return true;
 }
+
+void LedStripsDevice::linkAndInvalidateSlot(int index) {
+    uint8_t* base = static_cast<uint8_t*>(mRing) +
+                    (static_cast<size_t>(index) * mConfig.slotSize);
+    uint8_t* nextBase = static_cast<uint8_t*>(mRing) +
+                    (static_cast<size_t>((index + 1) % mConfig.numSlots) * mConfig.slotSize);
+
+    switch (mConfig.deviceType) {
+        case DeviceType::AW20144: {
+            auto* slot = reinterpret_cast<LedMmapBufAwinic*>(base);
+            slot->user_next = reinterpret_cast<LedMmapBufAwinic*>(nextBase);
+            slot->status = static_cast<uint8_t>(MmapBufStatus::INVALID);
+            return;
+        }
+        case DeviceType::SPI_MATRIX: {
+            auto* slot = reinterpret_cast<LedMmapBufSPI*>(base);
+            slot->user_next = reinterpret_cast<LedMmapBufSPI*>(nextBase);
+            slot->status = static_cast<uint8_t>(MmapBufStatus::INVALID);
+            return;
+        }
+    }
+    LOG(ERROR) << "Unknown device type";
+}
+
 
 /* bool LedStripsDevice::writeSlot(int slotIndex, const uint8_t* frameData,
                                  size_t pixelCount, uint8_t brightness) {
@@ -224,7 +245,7 @@ bool LedStripsDevice::writeSlotSpiMatrix(int slotIndex,
 void LedStripsDevice::resetSlots() {
     if (!isOpen()) return;
     for (int i = 0; i < mConfig.numSlots; ++i) {
-        slotAt(mRing, i)->status = static_cast<uint8_t>(MmapBufStatus::INVALID);
+        linkAndInvalidateSlot(i);
     }
 }
 

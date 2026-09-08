@@ -7,6 +7,7 @@
 
 #include <android-base/logging.h>
 #include <android-base/file.h>
+#include <android-base/properties.h>
 
 #include "SysfsDefs.h"
 
@@ -30,9 +31,20 @@ uint16_t scaleTo12Bit(uint8_t value8) {
     return static_cast<uint16_t>((static_cast<int>(value8) * kDeviceMaxScale + 127) / 255);
 }
 
+DeviceConfig getConfig() {
+    std::string model = ::android::base::GetProperty("ro.product.model", "");
+    if (model.empty()) {
+        LOG(FATAL) << "Unable to determine device model. Cannot continue!";
+    } else if ((model != MODEL_FROGGERPRO) && (model != MODEL_METROID)) {
+        LOG(FATAL) << "Unsupported model: '" << model << "'";
+    }
+    LOG(INFO) << "Selecting matrix LED config for device model: '" << model << "'";
+    return makeConfig(model);
+}
+
 }  // namespace
 
-MatrixLeds::MatrixLeds() : mDevice(makeConfig()) {}
+MatrixLeds::MatrixLeds() : mDevice(getConfig()) {}
 
 MatrixLeds::~MatrixLeds() {
     {

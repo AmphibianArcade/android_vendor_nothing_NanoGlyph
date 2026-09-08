@@ -72,6 +72,8 @@ private:
             size_t pixelCount,
             uint8_t brightness);
 
+    void linkAndInvalidateSlot(int index);
+
     DeviceConfig mConfig;
 
     int mFd = -1;

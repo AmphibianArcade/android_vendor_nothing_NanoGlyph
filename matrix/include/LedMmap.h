@@ -41,14 +41,6 @@ struct LedMmapBufAwinic : public LedMmapBufCommon {
 };
 #pragma pack(pop)
 
-#if MATRIXLEDS_FROGGERPRO_PIXEL_COUNT == MATRIX_LEDS_COUNT
-using LedMmapBuf = LedMmapBufAwinic;
-#endif
-
-#if MATRIXLEDS_METROID_PIXEL_COUNT == MATRIX_LEDS_COUNT
-using LedMmapBuf = LedMmapBufSPI;
-#endif
-
 static_assert(sizeof(LedMmapBufAwinic) == 1024);
 static_assert(sizeof(LedMmapBufSPI) == 2048);
 

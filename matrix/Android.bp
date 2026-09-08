@@ -25,10 +25,7 @@ cc_binary {
         "-Wall",
         "-Wextra",
         "-Werror",
-    ] + select(soong_config_variable("nanoglyph", "led_count"), {
-        any @ flag_val: ["-DMATRIX_LEDS_COUNT=" + flag_val ],
-        default: [],
-    })
+    ],
 }
 
 cc_binary {
