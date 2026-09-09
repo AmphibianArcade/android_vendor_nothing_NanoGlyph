@@ -21,13 +21,10 @@ inline vendor::nukisystems::nanoglyph::impl::DeviceConfig makeConfig(const std::
         cfg.deviceType = DeviceType::AW20144;
         cfg.name = "aw20144";
         cfg.pixelCount = MATRIXLEDS_FROGGERPRO_PIXEL_COUNT;
-        cfg.bytesPerPixel = 2;
 
         cfg.mmapPageOrder = 1;
         cfg.mmapDataElements = 500;
-        cfg.numSlots = 8;
         cfg.slotSize = sizeof(LedMmapBufAwinic);
-        cfg.ringTotalSize = cfg.slotSize * cfg.numSlots;
 
         cfg.brightnessFormat = BrightnessFormat::U8;
 
@@ -39,17 +36,16 @@ inline vendor::nukisystems::nanoglyph::impl::DeviceConfig makeConfig(const std::
         cfg.deviceType = DeviceType::SPI_MATRIX;
         cfg.name = "spi_matrix";
         cfg.pixelCount = MATRIXLEDS_METROID_PIXEL_COUNT;
-        cfg.bytesPerPixel = 2;
 
         cfg.mmapPageOrder = 2;
         cfg.mmapDataElements = 1012;
-        cfg.numSlots = 8;
         cfg.slotSize = sizeof(LedMmapBufSPI);
-        cfg.ringTotalSize = cfg.slotSize * cfg.numSlots;
 
         cfg.brightnessFormat = BrightnessFormat::U16;
 
         cfg.allBrightnessPath = kAllBrightnessPathSPI.c_str();
     } 
+
+    cfg.ringTotalSize = cfg.slotSize * cfg.numSlots;
     return cfg;
 }
