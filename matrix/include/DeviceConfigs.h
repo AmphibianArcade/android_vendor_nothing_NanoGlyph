@@ -8,12 +8,14 @@
 #define MODEL_FROGGERPRO "A069P"
 #define MODEL_METROID "A024"
 
-inline vendor::nukisystems::nanoglyph::impl::DeviceConfig makeConfig(const std::string& deviceModel) {
-    using vendor::nukisystems::nanoglyph::impl::DeviceConfig;
+using vendor::nukisystems::nanoglyph::impl::MatrixConfig;
+using vendor::nukisystems::nanoglyph::impl::RedLedConfig;
+
+inline vendor::nukisystems::nanoglyph::impl::MatrixConfig makeConfig(const std::string& deviceModel) {
     using vendor::nukisystems::nanoglyph::impl::BrightnessFormat;
     using vendor::nukisystems::nanoglyph::impl::DeviceType;
 
-    DeviceConfig cfg{};
+    MatrixConfig cfg{};
 
     if (deviceModel == MODEL_FROGGERPRO) {
         using vendor::nukisystems::nanoglyph::impl::LedMmapBufAwinic;
@@ -48,4 +50,12 @@ inline vendor::nukisystems::nanoglyph::impl::DeviceConfig makeConfig(const std::
 
     cfg.ringTotalSize = cfg.slotSize * cfg.numSlots;
     return cfg;
+}
+
+inline vendor::nukisystems::nanoglyph::impl::RedLedConfig makeRedLedConfig(const std::string& deviceModel) {
+
+    // All matrix devices are currently supported
+    RedLedConfig cfg{};
+    return cfg;
+
 }

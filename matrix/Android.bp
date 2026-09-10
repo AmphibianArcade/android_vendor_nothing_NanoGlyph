@@ -8,8 +8,7 @@ cc_binary {
     init_rc: ["vendor.nukisystems.nanoglyph.matrix-service.rc"],
     srcs: [
         "service/main.cpp",
-        "MatrixLeds.cpp",
-        "LedStripsDevice.cpp",
+        "*.cpp",
     ],
 
     local_include_dirs: ["include"],
