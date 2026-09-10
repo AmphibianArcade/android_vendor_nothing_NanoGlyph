@@ -12,7 +12,7 @@ namespace vendor::nukisystems::nanoglyph::impl {
 
 class LedStripsDevice {
 public:
-    explicit LedStripsDevice(DeviceConfig config)
+    explicit LedStripsDevice(MatrixConfig config)
         : mConfig(std::move(config)) {}
 
     ~LedStripsDevice();
@@ -27,7 +27,7 @@ public:
         return mFd >= 0 && mRing != nullptr;
     }
 
-    const DeviceConfig& config() const {
+    const MatrixConfig& config() const {
         return mConfig;
     }
 
@@ -74,7 +74,7 @@ private:
 
     void linkAndInvalidateSlot(int index);
 
-    DeviceConfig mConfig;
+    MatrixConfig mConfig;
 
     int mFd = -1;
     void* mRing = nullptr;

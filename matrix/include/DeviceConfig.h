@@ -19,7 +19,7 @@ enum class DeviceType {
     SPI_MATRIX,
 };
 
-struct DeviceConfig {
+struct MatrixConfig {
     DeviceType deviceType;
 
     const char* name = nullptr;
@@ -44,6 +44,11 @@ struct DeviceConfig {
     const char* allBrightnessPath = nullptr;
 
     const char* singleBrightnessPath = kSingleBrightnessPath.c_str();
+};
+
+struct RedLedConfig {
+    bool isSupported = true;
+    const char* brightnessPath = kRedLEDBrightnessPath.c_str();
 };
 
 }  // namespace vendor::nukisystems::nanoglyph::impl

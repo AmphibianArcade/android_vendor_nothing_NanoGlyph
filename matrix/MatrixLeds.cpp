@@ -10,28 +10,23 @@
 #include <android-base/properties.h>
 
 #include "SysfsDefs.h"
+#include "ErrorConstants.h"
 
 namespace aidl::vendor::nukisystems::nanoglyph {
 
 using aidl::vendor::nukisystems::nanoglyph::MatrixPattern;
 
 using ::vendor::nukisystems::nanoglyph::impl::LedStripsDevice;
-using ::vendor::nukisystems::nanoglyph::impl::DeviceConfig;
+using ::vendor::nukisystems::nanoglyph::impl::MatrixConfig;
 
 namespace {
-
-constexpr int32_t kErrNotAvailable    = 1; // MatrixLedsErrorCode.NOT_AVAILABLE
-constexpr int32_t kErrInvalidArgument = 2; // MatrixLedsErrorCode.INVALID_ARGUMENT
-constexpr int32_t kErrNoPatternLoaded = 3; // MatrixLedsErrorCode.NO_PATTERN_LOADED
-constexpr int32_t kErrBusy            = 4; // MatrixLedsErrorCode.BUSY
-constexpr int32_t kErrIoError         = 5; // MatrixLedsErrorCode.IO_ERROR
 
 constexpr int kDeviceMaxScale = 4095; 
 uint16_t scaleTo12Bit(uint8_t value8) {
     return static_cast<uint16_t>((static_cast<int>(value8) * kDeviceMaxScale + 127) / 255);
 }
 
-DeviceConfig getConfig() {
+MatrixConfig getConfig() {
     std::string model = ::android::base::GetProperty("ro.product.model", "");
     if (model.empty()) {
         LOG(FATAL) << "Unable to determine device model. Cannot continue!";

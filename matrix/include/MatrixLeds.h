@@ -14,7 +14,7 @@
 namespace aidl::vendor::nukisystems::nanoglyph {
 
 using ::vendor::nukisystems::nanoglyph::impl::LedStripsDevice;
-using ::vendor::nukisystems::nanoglyph::impl::DeviceConfig;
+using ::vendor::nukisystems::nanoglyph::impl::MatrixConfig;
 
 class MatrixLeds : public BnMatrixLeds {
 public:
