@@ -11,7 +11,7 @@ package vendor.nukisystems.nanoglyph;
  *
  */
 
-// @VintfStability
+@VintfStability
 interface IRedLed {
     /**
      * Returns true if the device has an additional red led alongside Glyph

@@ -2,6 +2,8 @@ aidl_interface {
     name: "vendor.nukisystems.nanoglyph",
     vendor: true,
     srcs: ["vendor/nukisystems/nanoglyph/*.aidl"],
+    owner: "nukisystems",
+    stability: "vintf",
     backend: {
         java: {
             enabled: true,
@@ -11,5 +13,12 @@ aidl_interface {
             enabled: false,
         },
     },
-    unstable: true,
+    versions_with_info: [
+        {
+            version: "1",
+            imports: [],
+        },
+    ],
+    frozen: true,
+
 }

@@ -6,6 +6,7 @@ cc_binary {
     vendor: true,
     relative_install_path: "hw",
     init_rc: ["vendor.nukisystems.nanoglyph.matrix-service.rc"],
+    vintf_fragments: ["vintf/vendor.nukisystems.nanoglyph-matrix.xml"],
     srcs: [
         "service/main.cpp",
         "*.cpp",
@@ -17,7 +18,7 @@ cc_binary {
         "libbase",
         "liblog",
         "libbinder_ndk",
-        "vendor.nukisystems.nanoglyph-ndk",
+        "vendor.nukisystems.nanoglyph-V1-ndk",
     ],
 
     cflags: [
@@ -35,6 +36,6 @@ cc_binary {
         "libbase",
         "liblog",
         "libbinder_ndk",
-        "vendor.nukisystems.nanoglyph-ndk",
+        "vendor.nukisystems.nanoglyph-V1-ndk",
     ],
 }
