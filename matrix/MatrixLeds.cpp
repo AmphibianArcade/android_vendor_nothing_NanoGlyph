@@ -48,10 +48,9 @@ MatrixLeds::~MatrixLeds() {
             mDevice.stopStream();
         }
     }
-    mMonitorRunning = false;
-    mDevice.interruptWait();
-    if (mMonitorThread.joinable()) {
-        mMonitorThread.join();
+    mFeederRunning = false;
+    if (mFeederThread.joinable()) {
+        mFeederThread.join();
     }
 }
 
@@ -98,19 +97,19 @@ bool MatrixLeds::init() {
     if (!mDeviceAvailable) {
         return ::ndk::ScopedAStatus::fromServiceSpecificError(kErrNotAvailable);
     }
-    if (pattern.pixelsPerFrame != static_cast<int32_t>(cfg.pixelCount)) {
+    if (static_cast<size_t>(pattern.pixelsPerFrame) != cfg.pixelCount) {
         LOG(ERROR) << cfg.name << ": loadPattern: pixelsPerFrame "
                    << pattern.pixelsPerFrame << " != expected " << cfg.pixelCount;
         return ::ndk::ScopedAStatus::fromServiceSpecificError(kErrInvalidArgument);
     }
-    if (pattern.frameCount <= 0 || pattern.frameCount > mDevice.slotCount()) {
-        LOG(ERROR) << cfg.name << ": loadPattern: frameCount " << pattern.frameCount
-                   << " out of range (max " << mDevice.slotCount() << ")";
+
+    if (pattern.frameCount <= 0) {
         return ::ndk::ScopedAStatus::fromServiceSpecificError(kErrInvalidArgument);
     }
+    if (mState == StreamState::STREAMING) {
+        return ::ndk::ScopedAStatus::fromServiceSpecificError(kErrBusy);
+    }
 
-    // frameData is always 1 byte/pixel (0-255) per the AIDL contract,
-    // regardless of this device's native width.
     const size_t expectedBytes =
             static_cast<size_t>(pattern.frameCount) * pattern.pixelsPerFrame;
     if (pattern.frameData.size() != expectedBytes) {
@@ -119,81 +118,130 @@ bool MatrixLeds::init() {
         return ::ndk::ScopedAStatus::fromServiceSpecificError(kErrInvalidArgument);
     }
 
-    mDevice.resetSlots();
+    if (expectedBytes > 900'000) {
+        LOG(ERROR) << cfg.name << ": loadPattern: pattern too large ("
+                   << expectedBytes << " bytes)";
+        return ::ndk::ScopedAStatus::fromServiceSpecificError(kErrInvalidArgument);
+    }
 
-    const uint8_t brightness8 =
-            static_cast<uint8_t>(std::clamp(pattern.brightness, 0, 255));
+    mSequence.clear();
+    mSequence.reserve(pattern.frameCount);
 
-    mLoadedFrames.clear();
-    mLoadedFrames.reserve(pattern.frameCount);
     for (int f = 0; f < pattern.frameCount; ++f) {
         const uint8_t* src = reinterpret_cast<const uint8_t*>(pattern.frameData.data()) +
-                            static_cast<size_t>(f) * pattern.pixelsPerFrame;
+                              static_cast<size_t>(f) * pattern.pixelsPerFrame;
         std::vector<uint16_t> scaledFrame(pattern.pixelsPerFrame);
         for (int p = 0; p < pattern.pixelsPerFrame; ++p) {
             scaledFrame[p] = scaleTo12Bit(src[p]);
         }
-        if (!mDevice.writeSlot(f, reinterpret_cast<const uint8_t*>(scaledFrame.data()),
-                                scaledFrame.size(), brightness8)) {
-            return ::ndk::ScopedAStatus::fromServiceSpecificError(kErrIoError);
-        }
-        mLoadedFrames.push_back(std::move(scaledFrame)); 
+        mSequence.push_back(std::move(scaledFrame));
     }
-    mLoadedBrightness8 = brightness8;
 
+    mSequenceCursor = 0;
+    mSequenceBrightness = static_cast<uint8_t>(std::clamp(pattern.brightness, 0, 255));
     mPatternLoaded = true;
-    mLoadedFrameCount = pattern.frameCount;
-    mLoadedPixelsPerFrame = pattern.pixelsPerFrame;
+
     LOG(INFO) << cfg.name << ": loadPattern: loaded " << pattern.frameCount
-              << " frames of " << pattern.pixelsPerFrame << " pixels";
+              << " total frames (ring holds " << mDevice.slotCount() << " at a time)";
     return ::ndk::ScopedAStatus::ok();
 }
 
 ::ndk::ScopedAStatus MatrixLeds::startStream() {
     std::lock_guard<std::mutex> lock(mMutex);
-
     if (!mDeviceAvailable) {
         return ::ndk::ScopedAStatus::fromServiceSpecificError(kErrNotAvailable);
     }
-    if (!mPatternLoaded) {
+    if (!mPatternLoaded || mSequence.empty()) {
         return ::ndk::ScopedAStatus::fromServiceSpecificError(kErrNoPatternLoaded);
     }
     if (mState == StreamState::STREAMING) {
-        return ::ndk::ScopedAStatus::ok();  // idempotent
+        return ::ndk::ScopedAStatus::ok();
     }
 
-    if (!mDevice.startStream(mDevice.config().pixelCount)) {
-        setStateLocked(StreamState::ERROR);
-        return ::ndk::ScopedAStatus::fromServiceSpecificError(kErrIoError);
-    }
-
+    mSequenceCursor = 0;
     setStateLocked(StreamState::STREAMING);
 
-    if (!mMonitorRunning.exchange(true)) {
-        if (mMonitorThread.joinable()) mMonitorThread.join();
-        mMonitorThread = std::thread(&MatrixLeds::playbackMonitorLoop, this);
+    if (!mFeederRunning.exchange(true)) {
+    if (mFeederThread.joinable()) mFeederThread.join();
+        mFeederThread = std::thread(&MatrixLeds::feederLoop, this);
     }
-
     return ::ndk::ScopedAStatus::ok();
 }
 
 ::ndk::ScopedAStatus MatrixLeds::stopStream() {
-    std::lock_guard<std::mutex> lock(mMutex);
+    {
+        std::lock_guard<std::mutex> lock(mMutex);
+        if (!mDeviceAvailable) {
+            return ::ndk::ScopedAStatus::fromServiceSpecificError(kErrNotAvailable);
+        }
+        if (mState != StreamState::STREAMING) {
+            return ::ndk::ScopedAStatus::ok();
+        }
+        mDevice.stopStream();
+        setStateLocked(StreamState::STOPPED);
+        mFeederRunning = false;
+    }  // lock released
 
-    if (!mDeviceAvailable) {
-        return ::ndk::ScopedAStatus::fromServiceSpecificError(kErrNotAvailable);
-    }
-    if (mState != StreamState::STREAMING) {
-        return ::ndk::ScopedAStatus::ok();  // idempotent
-    }
-
-    bool ok = mDevice.stopStream();
-    setStateLocked(StreamState::STOPPED);
-
-    if (!ok) {
-        return ::ndk::ScopedAStatus::fromServiceSpecificError(kErrIoError);
+    if (mFeederThread.joinable()) {
+        mFeederThread.join();
     }
     return ::ndk::ScopedAStatus::ok();
+}
+
+void MatrixLeds::feederLoop() {
+    {
+        std::lock_guard<std::mutex> lock(mMutex);
+        mDevice.resetSlots();
+        int slot = 0;
+        while (slot < mDevice.slotCount() && mSequenceCursor < mSequence.size()) {
+            mDevice.writeSlot(slot, reinterpret_cast<const uint8_t*>(mSequence[mSequenceCursor].data()),
+                               mSequence[mSequenceCursor].size(), mSequenceBrightness);
+            ++slot;
+            ++mSequenceCursor;
+        }
+        mDevice.startStream(mDevice.config().pixelCount);
+    }
+
+    while (mFeederRunning) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(2));
+
+        std::lock_guard<std::mutex> lock(mMutex);
+        if (mState != StreamState::STREAMING) break;
+
+        for (int i = 0; i < mDevice.slotCount(); ++i) {
+            if (mDevice.slotStatus(i) != static_cast<uint8_t>(MmapBufStatus::INVALID)) {
+                continue;  // kernel hasn't consumed this slot yet
+            }
+            if (mSequenceCursor >= mSequence.size()) {
+                if (mRepeatForever) {
+                    mSequenceCursor = 0;
+                } else {
+                    continue;
+                }
+            }
+            mDevice.writeSlot(i, reinterpret_cast<const uint8_t*>(mSequence[mSequenceCursor].data()),
+                               mSequence[mSequenceCursor].size(), mSequenceBrightness);
+            ++mSequenceCursor;
+        }
+
+        if (!mRepeatForever && mSequenceCursor >= mSequence.size()) {
+            bool allDrained = true;
+            for (int i = 0; i < mDevice.slotCount(); ++i) {
+                if (mDevice.slotStatus(i) == static_cast<uint8_t>(MmapBufStatus::VALID)) {
+                    allDrained = false;
+                    break;
+                }
+            }
+            if (allDrained) {
+                setStateLocked(StreamState::STOPPED);
+                mSequence.clear();
+                mSequence.shrink_to_fit();
+                mPatternLoaded = false;
+                break;
+            }
+        }
+    }
+    mFeederRunning = false;
 }
 
 ::ndk::ScopedAStatus MatrixLeds::getStreamState(StreamState* _aidl_return) {
@@ -216,13 +264,12 @@ bool MatrixLeds::init() {
         if (mState == StreamState::STREAMING) {
             mDevice.stopStream();
             setStateLocked(StreamState::STOPPED);
-            mMonitorRunning = false;
-            mDevice.interruptWait();
-        }
+            mFeederRunning = false;
+                    }
     } 
 
-    if (mMonitorThread.joinable()) {
-        mMonitorThread.join();  
+    if (mFeederThread.joinable()) {
+        mFeederThread.join();  
     }
 
     const auto& cfg = mDevice.config();
@@ -253,13 +300,12 @@ bool MatrixLeds::init() {
         if (mState == StreamState::STREAMING) {
             mDevice.stopStream();
             setStateLocked(StreamState::STOPPED);
-            mMonitorRunning = false;
-            mDevice.interruptWait();
+            mFeederRunning = false;
         }
     } 
 
-    if (mMonitorThread.joinable()) {
-        mMonitorThread.join();  
+    if (mFeederThread.joinable()) {
+        mFeederThread.join();
     }
 
     std::string str_brightness = std::to_string(brightness);
@@ -289,13 +335,12 @@ bool MatrixLeds::init() {
         if (mState == StreamState::STREAMING) {
             mDevice.stopStream();
             setStateLocked(StreamState::STOPPED);
-            mMonitorRunning = false;
-            mDevice.interruptWait();
+            mFeederRunning = false;
         }
     }
 
-    if (mMonitorThread.joinable()) {
-        mMonitorThread.join();
+    if (mFeederThread.joinable()) {
+        mFeederThread.join();
     }
 
     std::string payload;
@@ -366,35 +411,6 @@ void MatrixLeds::notifyStateChanged(StreamState newState) {
     }
     if (cb) {
         cb->onStreamStateChanged(newState);
-    }
-}
-
-void MatrixLeds::playbackMonitorLoop() {
-    char eventCode = 0;
-    while (mMonitorRunning) {
-        if (!mDevice.waitFrameEvent(&eventCode)) {
-            std::lock_guard<std::mutex> lock(mMutex);
-            if (mMonitorRunning) {
-                mState = StreamState::ERROR;
-                if (mCallback) mCallback->onDeviceError(mDevice.lastErrno());
-            }
-            mMonitorRunning = false;
-            break;
-        }
-
-        std::lock_guard<std::mutex> lock(mMutex);
-        if (mState != StreamState::STREAMING || mLoadedFrames.empty()) {
-            mMonitorRunning = false;
-            break;
-        }
-
-        mDevice.resetSlots();
-        for (size_t i = 0; i < mLoadedFrames.size(); ++i) {
-            mDevice.writeSlot(static_cast<int>(i),
-                               reinterpret_cast<const uint8_t*>(mLoadedFrames[i].data()),
-                               mLoadedFrames[i].size(), mLoadedBrightness8);
-        }
-        mDevice.startStream(mDevice.config().pixelCount);
     }
 }
 

@@ -20,6 +20,8 @@ public:
     LedStripsDevice(const LedStripsDevice&) = delete;
     LedStripsDevice& operator=(const LedStripsDevice&) = delete;
 
+    uint8_t slotStatus(int index) const;
+
     bool open();
     void close();
 

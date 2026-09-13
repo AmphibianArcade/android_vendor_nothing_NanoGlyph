@@ -206,6 +206,18 @@ void LedStripsDevice::linkAndInvalidateSlot(int index) {
     LOG(ERROR) << "Unknown device type";
 }
 
+uint8_t LedStripsDevice::slotStatus(int index) const {
+    switch (mConfig.deviceType) {
+        case DeviceType::AW20144:
+            return reinterpret_cast<LedMmapBufAwinic*>(
+                    slotBase(mRing, index, mConfig.slotSize))->status;
+        case DeviceType::SPI_MATRIX:
+            return reinterpret_cast<LedMmapBufSPI*>(
+                    slotBase(mRing, index, mConfig.slotSize))->status;
+    }
+    return static_cast<uint8_t>(MmapBufStatus::INVALID);
+}
+
 
 /* bool LedStripsDevice::writeSlot(int slotIndex, const uint8_t* frameData,
                                  size_t pixelCount, uint8_t brightness) {

@@ -15,6 +15,7 @@ namespace aidl::vendor::nukisystems::nanoglyph {
 
 using ::vendor::nukisystems::nanoglyph::impl::LedStripsDevice;
 using ::vendor::nukisystems::nanoglyph::impl::MatrixConfig;
+using ::vendor::nukisystems::nanoglyph::impl::MmapBufStatus;
 
 class MatrixLeds : public BnMatrixLeds {
 public:
@@ -40,25 +41,24 @@ public:
             const std::shared_ptr<IMatrixLedsCallback>& callback) override;
 
 private:
-    void playbackMonitorLoop();
+    void feederLoop();
 
-    void setStateLocked(StreamState newState);  
+    void setStateLocked(StreamState newState);
     void notifyStateChanged(StreamState newState);
 
     LedStripsDevice mDevice;
 
     std::mutex mMutex;
-    std::vector<std::vector<uint16_t>> mLoadedFrames;
-    uint8_t mLoadedBrightness8 = 0;                 
     bool mDeviceAvailable = false;
+    std::vector<std::vector<uint16_t>> mSequence;
+    size_t mSequenceCursor = 0;
+    uint8_t mSequenceBrightness = 0;
+    bool mRepeatForever = false;
+    std::thread mFeederThread;
+    std::atomic<bool> mFeederRunning{false};
     bool mPatternLoaded = false;
-    int mLoadedFrameCount = 0;
-    int mLoadedPixelsPerFrame = 0;
     StreamState mState = StreamState::STOPPED;
     std::shared_ptr<IMatrixLedsCallback> mCallback;
-
-    std::thread mMonitorThread;
-    std::atomic<bool> mMonitorRunning{false};
 };
 
 }  // namespace aidl::vendor::nukisystems::nanoglyph
