@@ -1,0 +1,2 @@
+type hal_matrix_leds, domain;
+type hal_matrix_leds_service, service_manager_type;

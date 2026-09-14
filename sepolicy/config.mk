@@ -1,1 +1,4 @@
-BOARD_VENDOR_SEPOLICY_DIRS += vendor/nothing/NanoGlyph/sepolicy/vendor
+NANOGLYPH_PATH := vendor/nothing/NanoGlyph
+
+BOARD_VENDOR_SEPOLICY_DIRS += $(NANOGLYPH_PATH)/sepolicy/vendor
+SYSTEM_EXT_PUBLIC_SEPOLICY_DIRS += $(NANOGLYPH_PATH)/sepolicy/public
