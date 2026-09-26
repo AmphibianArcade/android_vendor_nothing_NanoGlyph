@@ -1,0 +1,14 @@
+<compatibility-matrix version="8.0" type="framework">
+    <hal format="aidl" optional="true">
+        <name>vendor.nukisystems.nanoglyph</name>
+        <version>1</version>
+        <interface>
+            <name>IMatrixLeds</name>
+            <instance>default</instance>
+        </interface>
+        <interface>
+            <name>IRedLed</name>
+            <instance>default</instance>
+        </interface>
+    </hal>
+</compatibility-matrix>
