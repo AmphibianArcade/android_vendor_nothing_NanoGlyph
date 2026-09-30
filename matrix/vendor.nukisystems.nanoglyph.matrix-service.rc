@@ -7,9 +7,10 @@ service vendor.matrixleds /vendor/bin/hw/vendor.nukisystems.nanoglyph.matrix-ser
     disabled
     oneshot
 
-on boot 
+on boot
     chown system system /dev/matrix-leds
     chmod 660 /dev/matrix-leds
+    restorecon_recursive /sys/class/leds/matrix-leds
     chown system system /sys/class/leds/matrix-leds/single_brightness
     chmod 660 /sys/class/leds/matrix-leds/single_brightness
     chown system system /sys/class/leds/matrix-leds/all_white_brightness
